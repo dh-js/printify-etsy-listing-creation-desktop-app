@@ -135,6 +135,9 @@ app.get("/home", async (req, res) => {
     
 });
 
+const main = require('./main');
+app.use('/main', main);
+
 const port = 3003;
 app.listen(port, () => {
     console.log(`Hi! Go to the following link in your browser to start the app: http://localhost:${port}`);
