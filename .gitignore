@@ -1,0 +1,14 @@
+.csv/
+mug_listing_photos/
+mug_listing_primary_images/
+mug_listing_videos/
+shirt_listing_photos/
+shirt_listing_primary_images/
+shirt_listing_secondary_images/
+shirt_listing_videos/
+sweatshirt_listing_photos/
+sweatshirt_listing_primary_images/
+sweatshirt_listing_secondary_images/
+sweatshirt_listing_videos/
+node_modules/
+.env

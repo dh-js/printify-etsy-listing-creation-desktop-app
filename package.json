@@ -1,0 +1,33 @@
+{
+  "name": "printify-etsy-listing-creation-desktop-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "express": "4.x",
+    "form-data": "^4.0.0",
+    "hbs": "^4.1.2",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.6.1"
+  },
+  "pkg": {
+    "scripts": [
+      "*.js"
+    ],
+    "assets": [
+      "views/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
+  },
+  "author": "",
+  "license": "ISC"
+}
