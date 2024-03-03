@@ -57,6 +57,18 @@
             z-index: 9999;
             cursor: pointer;
         }
+        p.success-message {
+            color: darkgreen;
+            font-size: 0.9rem;
+        }
+        p.warning-message {
+            color: orange;
+            font-size: 0.9rem;
+        }
+        p.failure-message {
+            color: darkred;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 
@@ -80,6 +92,12 @@
             <input type="hidden" name="type_of_run" id="typeOfRun" value="create" />
             <button type="button" class="btn btn-primary btn-lg mb-2" id="createButton">Create New Listings</button>
             <button type="button" class="btn btn-secondary btn-lg mb-2" id="resumeButton">Resume Listing Creation</button>
+            {{#if csvErrors}}
+                <p class="failure-message"><b>The following errors were found in the .csv file, please fix and try again:</b></p>
+                {{#each csvErrors}}
+                    <p class="failure-message">{{this}}</p>
+                {{/each}}
+            {{/if}}
         </form>
     </div>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
