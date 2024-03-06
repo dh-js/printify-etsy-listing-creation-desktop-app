@@ -4,6 +4,7 @@ const express = require('express');
 const hbs = require("hbs");
 const fetch = require("node-fetch");
 const crypto = require("crypto");
+const ngrok = require("@ngrok/ngrok");
 
 const app = express();
 const { exec } = require('child_process');
@@ -139,12 +140,28 @@ const main = require('./main');
 app.use('/main', main);
 
 const port = 3003;
-app.listen(port, () => {
+app.listen(port, async () => {
     console.log(`Hi! Go to the following link in your browser to start the app: http://localhost:${port}`);
+    
+    // Automatically open the application in the default browser
     exec(`start http://localhost:${port}`, (err, stdout, stderr) => {
         if (err) {
             console.error(`exec error: ${err}`);
             return;
         }
     });
+
+    // Set ngrok authtoken from .env file
+    await ngrok.authtoken(process.env.NGROK_AUTHTOKEN);
+
+    // Start ngrok tunnel to forward traffic to port 3003
+    try {
+        const ngrokUrlObject = await ngrok.forward({ addr: port });
+        console.log(ngrokUrlObject);
+        const publicUrl = ngrokUrlObject.url;
+        console.log(`ngrok tunnel established at: ${publicUrl}`);
+        console.log(`You can now access your local server publicly via: ${publicUrl}`);
+    } catch (error) {
+        console.error(`Failed to establish ngrok tunnel: ${error}`);
+    }
 });
