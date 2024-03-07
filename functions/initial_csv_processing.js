@@ -2,6 +2,8 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const csv = require("csv-parser");
 
+const { arrayOfProductTypesBeingUsed, productsNotInUse } = require('../products/products_being_used.js');
+
 async function initialCsvProcessing() {
 
     const csvDirectory = './.csv/';
@@ -52,8 +54,6 @@ async function initialCsvProcessing() {
         };
     }
 
-    const productsNotInUse = ['Gildan 64000', 'Digital', 'Digital Set'];
-
     // Filter out columns based on productsNotInUse
     const filteredRowsArray = initialReadRowsArray.map(row => {
         return Object.keys(row).reduce((acc, key) => {
@@ -71,12 +71,13 @@ async function initialCsvProcessing() {
     for (const row of filteredRowsArray) {
 
         lineCount++;
-
-        const arrayOfProductTypesBeingUsed = ['Bella Canvas 3001', 'Gildan 18000', 'Mug'];
+        let productTypesWithYes = [];
 
         for (const productType of arrayOfProductTypesBeingUsed) {
 
             if (row[productType] === "Yes") {
+
+                productTypesWithYes.push(productType);
                 
                 let singleImageColumnName = productType + " Single Image File";
                 let primaryImageColumnName = productType + " Primary Image File";
@@ -103,10 +104,10 @@ async function initialCsvProcessing() {
                 let primaryGraphicFolderName = `${nameUsedForFolders}_listing_primary_images`;
 
                 let testMockupImageNameWithoutExtension = row[columnNameForImageFilename].replace(/\.(png|jpg)$/,'');
-                let testMockupPhotoFilePath = `./${mockupPhotoFolderName}/${testMockupImageNameWithoutExtension}_${nameUsedForFolders}`;
+                let testMockupPhotoFilePath = `./files/${mockupPhotoFolderName}/${testMockupImageNameWithoutExtension}_${nameUsedForFolders}`;
                 let videoFileName = testMockupImageNameWithoutExtension.split('_').slice(0, 2).join('_') + "_video.mp4";
-                let testMockupVideoFilePath = `./${mockupVideoFolderName}/${videoFileName}`;
-                let testPrimaryGraphicFilePath = `./${primaryGraphicFolderName}/${row[columnNameForImageFilename]}`;
+                let testMockupVideoFilePath = `./files/${mockupVideoFolderName}/${videoFileName}`;
+                let testPrimaryGraphicFilePath = `./files/${primaryGraphicFolderName}/${row[columnNameForImageFilename]}`;
                 
                 //console.log(`Checking for ${testMockupPhotoFilePath}`);
                 if (!fs.existsSync(testMockupPhotoFilePath)) {
@@ -129,7 +130,7 @@ async function initialCsvProcessing() {
                     let secondaryImageColumnName = productType + " Secondary Image File";
                     let secondaryImageFilename = row[secondaryImageColumnName];
                     let secondaryGraphicFolderName = `${nameUsedForFolders}_listing_secondary_images`;
-                    testSecondaryGraphicFilePath = `./${secondaryGraphicFolderName}/${secondaryImageFilename}`;
+                    testSecondaryGraphicFilePath = `./files/${secondaryGraphicFolderName}/${secondaryImageFilename}`;
                     //console.log(`Checking for ${testSecondaryGraphicFilePath}`);
                     if (!fs.existsSync(testSecondaryGraphicFilePath)) {
                         let csvErrorString = `.CSV Error Row ${lineCount}: No secondary graphic file found at ${testSecondaryGraphicFilePath}`;
@@ -150,6 +151,7 @@ async function initialCsvProcessing() {
             }
         }
 
+        row['ProductTypesWithYes'] = productTypesWithYes;
         newRowsArray.push(row);
 
     }

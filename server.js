@@ -5,13 +5,15 @@ const hbs = require("hbs");
 const fetch = require("node-fetch");
 const crypto = require("crypto");
 const ngrok = require("@ngrok/ngrok");
+const main = require('./main');
 
 const app = express();
+const port = 3003;
 const { exec } = require('child_process');
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
-app.use('/assets', express.static('./assets'));
+app.use('/files', express.static('./files'));
 
 //OAUTH Values
 const base64URLEncode = (str) =>
@@ -136,10 +138,10 @@ app.get("/home", async (req, res) => {
     
 });
 
-const main = require('./main');
+
 app.use('/main', main);
 
-const port = 3003;
+
 app.listen(port, async () => {
     console.log(`Hi! Go to the following link in your browser to start the app: http://localhost:${port}`);
     
@@ -157,10 +159,13 @@ app.listen(port, async () => {
     // Start ngrok tunnel to forward traffic to port 3003
     try {
         const ngrokUrlObject = await ngrok.forward({ addr: port });
-        console.log(ngrokUrlObject);
-        const publicUrl = ngrokUrlObject.url;
+        // Correctly access the URL by calling the url() method
+        const publicUrl = ngrokUrlObject.url();
         console.log(`ngrok tunnel established at: ${publicUrl}`);
         console.log(`You can now access your local server publicly via: ${publicUrl}`);
+
+        // Set the ngrok URL as a global variable
+        global.ngrokUrl = publicUrl;
     } catch (error) {
         console.error(`Failed to establish ngrok tunnel: ${error}`);
     }
