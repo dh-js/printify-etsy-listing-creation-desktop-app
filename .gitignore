@@ -13,3 +13,4 @@ sweatshirt_listing_videos/
 node_modules/
 .env
 *.txt
+*.csv
