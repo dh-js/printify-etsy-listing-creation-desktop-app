@@ -12,3 +12,4 @@ sweatshirt_listing_secondary_images/
 sweatshirt_listing_videos/
 node_modules/
 .env
+*.txt

@@ -43,6 +43,12 @@ router.post('/', async (req, res) => {
     // return;
     //------End of dev section
 
+    // printifyApiUrl = `https://api.printify.com//v1/shops.json`
+    // const shopData = await printifyApiCall(printifyApiUrl, 'GET');
+    // console.log(shopData);
+    // res.send(`<pre>${JSON.stringify(shopData, null, 2)}</pre>`);
+    // return;
+
     //const rowsArray = initialCsvProcessingResult.newRowsArray;
 
     const uploadGraphicsPrintifyResult = await uploadGraphicsPrintify(initialCsvProcessingResult.newRowsArray);
@@ -73,9 +79,64 @@ router.post('/', async (req, res) => {
         return;
     }
 
+    //res.send(`<pre>${JSON.stringify(uploadProductsPrintifyResult.rowsArray, null, 2)}</pre>`);
+
+    const rowsArrayAfterPrintify = uploadProductsPrintifyResult.rowsArray;
+    let publishingErrorsArray = [];
+
+    // Now for each listing, publish to Etsy store
+    for (const row of rowsArrayAfterPrintify) {
+        let updatedProductTypesWithYes = []; // To store successfully published products
+        for (const product of row.ProductTypesWithYes) {
+
+            const printifyListingId = row[`${product} Printify Listing ID`];
+            printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products/${printifyListingId}/publish.json`;
+            let publishObject = {
+                "title": true,
+                "description": true,
+                "images": false,
+                "variants": true,
+                "tags": false,
+                "keyFeatures": true,
+                "shipping_template": true
+            }
+            const publishResult = await printifyApiCall(printifyApiUrl, 'POST', publishObject, 3, 10);
+            console.log(publishResult);
+            if (Object.keys(publishResult).length === 0) {
+                // If publishResult is an empty object, indicating success, keep the product
+                updatedProductTypesWithYes.push(product);
+            } else {
+                // If there's an error, add the product and its row to the publishingErrorsArray
+                publishingErrorsArray.push({ row, product, error: publishResult });
+            }
+            // Wait 10 seconds to avoid hitting the publishing rate limit
+            await new Promise(resolve => setTimeout(resolve, 10000));
+        }
+        // Update the row's ProductTypesWithYes to only include successfully published products
+        row.ProductTypesWithYes = updatedProductTypesWithYes;
+    }
+
+    // Note: rowsArrayAfterPrintify now contains rows with only successfully published products in their ProductTypesWithYes.
+    // publishingErrorsArray contains detailed error info for each failed product, including its row and the specific product that failed.
+
+    if (publishingErrorsArray.length > 0) {
+        console.log("The following rows failed to publish:", publishingErrorsArray);
+    }
+
     res.send(`<pre>${JSON.stringify(uploadProductsPrintifyResult.rowsArray, null, 2)}</pre>`);
 
-    // Now i guess publish the printify listings to Etsy store
+    // Now interact with Etsy API
+    // Fetch countHowManyProductsCreated number of products from Etsy
+    // For each row in .csv, if this find the id of the corresponding product in the Etsy store
+    // Update the Etsy product with info
+
+    for (const row of rowsArrayAfterPrintify) {
+        for (const product of row.ProductTypesWithYes) {
+            // This will only execute if there are items in ProductTypesWithYes
+            console.log(`Product ${product} was successfully published for this row:`, row);
+            
+        }
+    }
 
 });
 

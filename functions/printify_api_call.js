@@ -1,6 +1,8 @@
 const fetch = require("node-fetch");
 
-async function printifyApiCall(url, method = 'GET', body = null, retries = 3) {
+async function printifyApiCall(url, method = 'GET', body = null, retries = 3, delay = 0) {
+    const delayExecution = (delay) => new Promise(resolve => setTimeout(resolve, delay * 1000));
+
     try {
         const options = {
             method: method,
@@ -26,7 +28,11 @@ async function printifyApiCall(url, method = 'GET', body = null, retries = 3) {
         console.error(`Failed to fetch from API: ${error}`);
         if (retries > 0) {
             console.log(`Retrying... (${retries} attempts left)...`);
-            return printifyApiCall(url, method, body, retries - 1);
+            if (delay > 0) {
+                console.log(`Waiting for ${delay} seconds before retrying...`);
+                await delayExecution(delay);
+            }
+            return printifyApiCall(url, method, body, retries - 1, delay);
         } else {
             console.error(`No more retries left`);
             throw error;
