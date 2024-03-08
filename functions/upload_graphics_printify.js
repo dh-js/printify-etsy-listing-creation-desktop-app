@@ -5,6 +5,7 @@ const printifyApiCall = require('./printify_api_call');
 async function uploadGraphicsPrintify(rowsArray) {
 
     const ngrokUrl = global.ngrokUrl;
+    const errorsArray = [];
 
     for (const row of rowsArray) {
         let primaryGraphicUploaded = false;
@@ -23,13 +24,16 @@ async function uploadGraphicsPrintify(rowsArray) {
                     "url": primaryGraphicURL
                 };
 
-                console.log("Uploading primary graphic...");
-                console.log(imageUploadObject);
-
                 const printifyApiUrl = `https://api.printify.com/v1/uploads/images.json`;
-                const uploadedGraphicPrimary = await printifyApiCall(printifyApiUrl, 'POST', imageUploadObject);
+                let uploadedGraphicPrimary;
+                try {
+                    uploadedGraphicPrimary = await printifyApiCall(printifyApiUrl, 'POST', imageUploadObject);
+                    console.log(`Uploaded file ${primaryGraphicFileName} to Printify`);
+                } catch (error) {
+                    console.log(error);
+                    errorsArray.push(error);
+                }
 
-                console.log(uploadedGraphicPrimary);
                 primaryGraphicPrintifyId = uploadedGraphicPrimary.id;
                 primaryGraphicPrintifyName = uploadedGraphicPrimary.file_name;
                 primaryGraphicUploaded = true;
@@ -44,13 +48,16 @@ async function uploadGraphicsPrintify(rowsArray) {
                     "url": secondaryGraphicURL
                 };
 
-                console.log("Uploading secondary graphic...");
-                console.log(imageUploadObject);
-
                 const printifyApiUrl = `https://api.printify.com/v1/uploads/images.json`;
-                const uploadedGraphicSecondary = await printifyApiCall(printifyApiUrl, 'POST', imageUploadObject);
+                let uploadedGraphicSecondary;
+                try {
+                    uploadedGraphicSecondary = await printifyApiCall(printifyApiUrl, 'POST', imageUploadObject);
+                    console.log(`Uploaded file ${secondaryGraphicFileName} to Printify`);
+                } catch (error) {
+                    console.log(error);
+                    errorsArray.push(error);
+                }
 
-                console.log(uploadedGraphicSecondary);
                 secondaryGraphicPrintifyId = uploadedGraphicSecondary.id;
                 secondaryGraphicPrintifyName = uploadedGraphicSecondary.file_name;
                 secondaryGraphicUploaded = true;
@@ -64,7 +71,10 @@ async function uploadGraphicsPrintify(rowsArray) {
             row.secondaryGraphicPrintifyName = secondaryGraphicPrintifyName;
         }
     }
-    return rowsArray;
+    return {
+        rowsArray,
+        errorsArray
+    }   
 }
 
 module.exports = uploadGraphicsPrintify;

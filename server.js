@@ -161,8 +161,8 @@ app.listen(port, async () => {
         const ngrokUrlObject = await ngrok.forward({ addr: port });
         // Correctly access the URL by calling the url() method
         const publicUrl = ngrokUrlObject.url();
-        console.log(`ngrok tunnel established at: ${publicUrl}`);
-        console.log(`You can now access your local server publicly via: ${publicUrl}`);
+        //console.log(`ngrok tunnel established at: ${publicUrl}`);
+        //console.log(`You can now access your local server publicly via: ${publicUrl}`);
 
         // Set the ngrok URL as a global variable
         global.ngrokUrl = publicUrl;

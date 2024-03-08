@@ -19,7 +19,7 @@ async function printifyApiCall(url, method = 'GET', body = null, retries = 3) {
             const errorBody = await response.text();
             throw new Error(`HTTP error! Status: ${response.status}, Status Text: ${response.statusText}, Body: ${errorBody}`);
         }
-        console.log(`Printify API call successful`);
+        //console.log(`Printify API call successful`);
         const data = await response.json();
         return data;
     } catch (error) {
