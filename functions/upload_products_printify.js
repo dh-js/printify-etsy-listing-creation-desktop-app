@@ -1,4 +1,4 @@
-const printifyApiCall = require('./printify_api_call');
+const apiCall = require('./api_call');
 const gildan_18000_ids = require('../products/gildan_18000_ids');
 const bella_canvas_3001_ids = require('../products/bella_canvas_3001_ids');
 
@@ -142,7 +142,7 @@ async function uploadProductsPrintify(rowsArray) {
             const printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products.json`;
             let newProduct;
             try {
-                newProduct = await printifyApiCall(printifyApiUrl, 'POST', newProductTemplate);
+                newProduct = await apiCall('printify', printifyApiUrl, 'POST', newProductTemplate);
                 console.log(`Created listing: ${productType} on Printify for row ${rowNumber}`);
                 row[`${productType} Prinitfy Listing ID`] = newProduct.id;
             } catch (error) {

@@ -69,6 +69,11 @@
             color: darkred;
             font-size: 0.9rem;
         }
+        .btn-primary {
+            background-color: #29ab51 !important;
+            border-color: #29ab51 !important;
+            color: white !important;
+        }
     </style>
 </head>
 
@@ -91,10 +96,12 @@
             <input type="hidden" name="first_name" value="{{first_name_hbs}}" />
             <input type="hidden" name="type_of_run" id="typeOfRun" value="create" />
             <button type="button" class="btn btn-primary btn-lg mb-2" id="createButton">Create New Listings</button>
-            <button type="button" class="btn btn-secondary btn-lg mb-2" id="resumeButton">Resume Listing Creation</button>
-            {{#if csvErrors}}
+            <hr>
+            <button type="button" class="btn btn-secondary btn-lg mb-2" id="resumeButton">Etsy Listing Updating Only</button>
+            <hr>
+            {{#if errors}}
                 <p class="failure-message"><b>The following errors were found in the .csv file, please fix and try again:</b></p>
-                {{#each csvErrors}}
+                {{#each errors}}
                     <p class="failure-message">{{this}}</p>
                 {{/each}}
             {{/if}}

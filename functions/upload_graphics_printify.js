@@ -1,6 +1,6 @@
 const path = require('path');
 
-const printifyApiCall = require('./printify_api_call');
+const apiCall = require('./api_call');
 
 async function uploadGraphicsPrintify(rowsArray) {
 
@@ -27,7 +27,7 @@ async function uploadGraphicsPrintify(rowsArray) {
                 const printifyApiUrl = `https://api.printify.com/v1/uploads/images.json`;
                 let uploadedGraphicPrimary;
                 try {
-                    uploadedGraphicPrimary = await printifyApiCall(printifyApiUrl, 'POST', imageUploadObject);
+                    uploadedGraphicPrimary = await apiCall('printify', printifyApiUrl, 'POST', imageUploadObject);
                     console.log(`Uploaded file ${primaryGraphicFileName} to Printify`);
                 } catch (error) {
                     console.log(error);
@@ -51,7 +51,7 @@ async function uploadGraphicsPrintify(rowsArray) {
                 const printifyApiUrl = `https://api.printify.com/v1/uploads/images.json`;
                 let uploadedGraphicSecondary;
                 try {
-                    uploadedGraphicSecondary = await printifyApiCall(printifyApiUrl, 'POST', imageUploadObject);
+                    uploadedGraphicSecondary = await apiCall('printify', printifyApiUrl, 'POST', imageUploadObject);
                     console.log(`Uploaded file ${secondaryGraphicFileName} to Printify`);
                 } catch (error) {
                     console.log(error);

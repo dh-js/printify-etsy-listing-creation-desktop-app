@@ -3,22 +3,38 @@ const router = express.Router();
 const path = require('path');
 
 const initialCsvProcessing = require('./functions/initial_csv_processing');
-const printifyApiCall = require('./functions/printify_api_call');
+const apiCall = require('./functions/api_call');
 const uploadGraphicsPrintify = require('./functions/upload_graphics_printify');
 const uploadProductsPrintify = require('./functions/upload_products_printify');
-
+const updateEtsyListings = require('./functions/update_etsy_listings');
+const checkAllPublished = require('./functions/check_all_published');
+const getAllEtsyListings = require('./functions/get_all_etsy_listings');
 
 router.post('/', async (req, res) => {
     const {access_token, refresh_token, shop_id, first_name, type_of_run} = req.body;
 
+    // Define the Printify API URL in case of dev-use
     let printifyApiUrl;
-    
-    const initialCsvProcessingResult = await initialCsvProcessing();
-
+    let etsyApiUrl;
     // Access the global ngrok URL
     const ngrokUrl = global.ngrokUrl;
     //console.log(`Accessing ngrok URL in main.js: ${ngrokUrl}`);
 
+    // FIRST CHECK HOW MANY ALREADY ACTIVE ETSY LISTINGS THERE ARE (for later checking that publishing has finished)
+    
+    let startingNumberOfEtsyActiveListings;
+    try {
+        etsyApiUrl = `https://openapi.etsy.com/v3/application/shops/${shop_id}/listings?state=active`
+        const activeEtsyListingsResult = await apiCall('etsy', etsyApiUrl, 'GET', null, 3, 0, access_token, refresh_token)
+        startingNumberOfEtsyActiveListings = activeEtsyListingsResult.count
+    } catch (error) {
+        console.log(error);
+        return;
+    }
+
+    console.log(`Starting number of active Etsy listings: ${startingNumberOfEtsyActiveListings}`);
+    
+    const initialCsvProcessingResult = await initialCsvProcessing();
     //console.log(initialCsvProcessingResult);
 
     if (initialCsvProcessingResult.csvErrorArray.length > 0) {
@@ -27,116 +43,124 @@ router.post('/', async (req, res) => {
             shop_id_hbs: shop_id,
             access_token_hbs: access_token,
             refresh_token_hbs: refresh_token,
-            csvErrors: initialCsvProcessingResult.csvErrorArray
+            errors: initialCsvProcessingResult.csvErrorArray
         });
         return;
     }
 
     // This section is for during development - to get example product info from Printify
     // printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products.json/?page=1`
-    // const allProductsData = await printifyApiCall(printifyApiUrl, 'GET');
+    // const allProductsData = await apiCall('printify', printifyApiUrl, 'GET');
     // const simplifiedVariants = allProductsData.data[0].variants.map(variant => ({
     //     id: variant.id,
     //     title: variant.title
     // }));
-    // res.send(`<pre>${JSON.stringify(simplifiedVariants, null, 2)}</pre>`);
+    // res.send(`<pre>${JSON.stringify(allProductsData.data[0], null, 2)}</pre>`);
     // return;
     //------End of dev section
 
     // printifyApiUrl = `https://api.printify.com//v1/shops.json`
-    // const shopData = await printifyApiCall(printifyApiUrl, 'GET');
+    // const shopData = await apiCall('printify', printifyApiUrl, 'GET');
     // console.log(shopData);
     // res.send(`<pre>${JSON.stringify(shopData, null, 2)}</pre>`);
     // return;
 
     //const rowsArray = initialCsvProcessingResult.newRowsArray;
 
-    const uploadGraphicsPrintifyResult = await uploadGraphicsPrintify(initialCsvProcessingResult.newRowsArray);
 
-    if (uploadGraphicsPrintifyResult.errorsArray.length > 0) {
-        res.render("home", {
-            first_name_hbs: first_name,
-            shop_id_hbs: shop_id,
-            access_token_hbs: access_token,
-            refresh_token_hbs: refresh_token,
-            csvErrors: uploadGraphicsPrintifyResult.errorsArray
-        });
-        return;
-    }
+    // DEPENDING ON WHETHER LISTINGS NEED TO BE CREATED ON PRINTIFY FIRST,
+    // OR WHETHER IT IS A RE-ATTEMPT OF ADDING THE FILES TO ETSY (in case there was timeout/server issues)
+    // ALSO MAY BE A RE-ATTEMPT OF ETSY IF PUBLISHING ON PRINTIFY HAD TO BE DONE MANUALLY FOR SOME LISTINGS
+    let uploadGraphicsPrintifyResult;
+    let uploadProductsPrintifyResult;
+    let printifyPublishingResult;
+    let rowsArrayAfterPrintify;
 
-    //console.log(rowsArray);
+    if (type_of_run === 'create') {
+        uploadGraphicsPrintifyResult = await uploadGraphicsPrintify(initialCsvProcessingResult.newRowsArray);
 
-    const uploadProductsPrintifyResult = await uploadProductsPrintify(uploadGraphicsPrintifyResult.rowsArray);
-
-    if (uploadProductsPrintifyResult.errorsArray.length > 0) {
-        res.render("home", {
-            first_name_hbs: first_name,
-            shop_id_hbs: shop_id,
-            access_token_hbs: access_token,
-            refresh_token_hbs: refresh_token,
-            csvErrors: uploadProductsPrintifyResult.errorsArray
-        });
-        return;
-    }
-
-    //res.send(`<pre>${JSON.stringify(uploadProductsPrintifyResult.rowsArray, null, 2)}</pre>`);
-
-    const rowsArrayAfterPrintify = uploadProductsPrintifyResult.rowsArray;
-    let publishingErrorsArray = [];
-
-    // Now for each listing, publish to Etsy store
-    for (const row of rowsArrayAfterPrintify) {
-        let updatedProductTypesWithYes = []; // To store successfully published products
-        for (const product of row.ProductTypesWithYes) {
-
-            const printifyListingId = row[`${product} Printify Listing ID`];
-            printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products/${printifyListingId}/publish.json`;
-            let publishObject = {
-                "title": true,
-                "description": true,
-                "images": false,
-                "variants": true,
-                "tags": false,
-                "keyFeatures": true,
-                "shipping_template": true
-            }
-            const publishResult = await printifyApiCall(printifyApiUrl, 'POST', publishObject, 3, 10);
-            console.log(publishResult);
-            if (Object.keys(publishResult).length === 0) {
-                // If publishResult is an empty object, indicating success, keep the product
-                updatedProductTypesWithYes.push(product);
-            } else {
-                // If there's an error, add the product and its row to the publishingErrorsArray
-                publishingErrorsArray.push({ row, product, error: publishResult });
-            }
-            // Wait 10 seconds to avoid hitting the publishing rate limit
-            await new Promise(resolve => setTimeout(resolve, 10000));
+        if (uploadGraphicsPrintifyResult.errorsArray.length > 0) {
+            res.render("home", {
+                first_name_hbs: first_name,
+                shop_id_hbs: shop_id,
+                access_token_hbs: access_token,
+                refresh_token_hbs: refresh_token,
+                errors: uploadGraphicsPrintifyResult.errorsArray
+            });
+            return;
         }
-        // Update the row's ProductTypesWithYes to only include successfully published products
-        row.ProductTypesWithYes = updatedProductTypesWithYes;
+
+        uploadProductsPrintifyResult = await uploadProductsPrintify(uploadGraphicsPrintifyResult.rowsArray);
+
+        if (uploadProductsPrintifyResult.errorsArray.length > 0) {
+            res.render("home", {
+                first_name_hbs: first_name,
+                shop_id_hbs: shop_id,
+                access_token_hbs: access_token,
+                refresh_token_hbs: refresh_token,
+                errors: uploadProductsPrintifyResult.errorsArray
+            });
+            return;
+        }
+
+        rowsArrayAfterPrintify = uploadProductsPrintifyResult.rowsArray;
+
+        // PUBLISHING SECTION
+        // printifyPublishingResult = await publishListingsPrintify(uploadProductsPrintifyResult.rowsArray);
+        // if (printifyPublishingResult.errorsArray.length > 0) {
+        //     console.log("The following rows failed to publish:", printifyPublishingResult.errorsArray);
+        //     console.log("The listing automation process will continue without these rows");
+        // }
+        // rowsArrayAfterPrintify = printifyPublishingResult.rowsArray;
+        // Note: rowsArrayAfterPrintify now contains rows with only successfully published products in their ProductTypesWithYes.
+
+    } else if (type_of_run === 'resume') {
+        rowsArrayAfterPrintify = initialCsvProcessingResult.newRowsArray;
     }
+    
+    //console.log(rowsArrayAfterPrintify);
 
-    // Note: rowsArrayAfterPrintify now contains rows with only successfully published products in their ProductTypesWithYes.
-    // publishingErrorsArray contains detailed error info for each failed product, including its row and the specific product that failed.
+    /////////////////////////// NOW INTERACT WITH ETSY API ///////////////////////////
 
-    if (publishingErrorsArray.length > 0) {
-        console.log("The following rows failed to publish:", publishingErrorsArray);
-    }
+    // CHECKING THAT ALL PUBLISHED LISTINGS ARE SHOWING ON ETSY
+    // let allPublishedListingsAreShowing = false;
+    // try {
+    //     allPublishedListingsAreShowing = await checkAllPublished(rowsArrayAfterPrintify, startingNumberOfEtsyActiveListings, shop_id, access_token, refresh_token);
+    // } catch (error) {
+    //     console.error(`Unable to check how many listings are now active on Etsy, once you can see all listings have published then run the 'Resume' process: ${error}`);
+    //     console.log(`allPublishedListingsAreShowing: ${allPublishedListingsAreShowing}`);
+    // }
+    // // If an error was thrown or if false was returned
+    // if (!allPublishedListingsAreShowing) {
+    //     console.log(`Not all published listings are showing on Etsy. Manually run the 'Resume' process once you are happy with what has been published.`);
+    //     console.log(`In the 'Resume' process the automation will skip any listings it can't see on Etsy`);
+    //     res.render("home", {
+    //         first_name_hbs: first_name,
+    //         shop_id_hbs: shop_id,
+    //         access_token_hbs: access_token,
+    //         refresh_token_hbs: refresh_token,
+    //         errors: [`Not all published listings are showing on Etsy. Manually run the 'Resume' process once you are happy with what has been published. The automation will skip any listings it can't see on Etsy`]
+    //     });
+    //     return;
+    // }
+    // END OF CHECKING WHETHER ALL PUBLISHED LISTINGS ARE SHOWING ON ETSY
 
-    res.send(`<pre>${JSON.stringify(uploadProductsPrintifyResult.rowsArray, null, 2)}</pre>`);
 
-    // Now interact with Etsy API
-    // Fetch countHowManyProductsCreated number of products from Etsy
-    // For each row in .csv, if this find the id of the corresponding product in the Etsy store
-    // Update the Etsy product with info
+    // GET ALL ACTIVE ETSY LISTINGS IN AN ARRAY SO THEY CAN BE MATCHED WITH THE CORRESPONDING ROW
+    const allEtsyListings = await getAllEtsyListings(shop_id, access_token, refresh_token);
+
+
+    // For each row in rowsArrayAfterPrintify, for each ProductTypesWithYes, update the Etsy listing
 
     for (const row of rowsArrayAfterPrintify) {
         for (const product of row.ProductTypesWithYes) {
             // This will only execute if there are items in ProductTypesWithYes
-            console.log(`Product ${product} was successfully published for this row:`, row);
+            const updateEtsyListingsResult = await updateEtsyListings(product, row, allEtsyListings, shop_id, access_token, refresh_token);
             
         }
     }
+
+    
 
 });
 

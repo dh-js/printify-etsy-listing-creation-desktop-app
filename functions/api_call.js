@@ -1,16 +1,28 @@
 const fetch = require("node-fetch");
 
-async function printifyApiCall(url, method = 'GET', body = null, retries = 3, delay = 0) {
+async function apiCall(api, url, method = 'GET', body = null, retries = 3, delay = 5, etsy_access_token = null, etsy_refresh_token = null) {
     const delayExecution = (delay) => new Promise(resolve => setTimeout(resolve, delay * 1000));
 
     try {
-        const options = {
-            method: method,
-            headers: {
-                'Authorization': `Bearer ${process.env.PRINTIFY_API_KEY}`,
-                'Content-Type': 'application/json'
-            }
-        };
+        let options;
+        if (api === 'printify') {
+            options = {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${process.env.PRINTIFY_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+        } else if (api === 'etsy') {
+            options = {
+                method: method,
+                headers: {
+                    'x-api-key': process.env.ETSY_CLIENT_ID,
+                    Authorization: `Bearer ${etsy_access_token}`,
+                    'Accept': 'application/json',
+                },
+            };
+        }
         // Add the body to the request if method is POST and body is not null
         if (method === 'POST' && body) {
             options.body = JSON.stringify(body);
@@ -21,7 +33,7 @@ async function printifyApiCall(url, method = 'GET', body = null, retries = 3, de
             const errorBody = await response.text();
             throw new Error(`HTTP error! Status: ${response.status}, Status Text: ${response.statusText}, Body: ${errorBody}`);
         }
-        //console.log(`Printify API call successful`);
+        //console.log(`API call successful`);
         const data = await response.json();
         return data;
     } catch (error) {
@@ -32,7 +44,7 @@ async function printifyApiCall(url, method = 'GET', body = null, retries = 3, de
                 console.log(`Waiting for ${delay} seconds before retrying...`);
                 await delayExecution(delay);
             }
-            return printifyApiCall(url, method, body, retries - 1, delay);
+            return apiCall(api, url, method, body, retries - 1, delay, etsy_access_token, etsy_refresh_token);
         } else {
             console.error(`No more retries left`);
             throw error;
@@ -40,4 +52,4 @@ async function printifyApiCall(url, method = 'GET', body = null, retries = 3, de
     }
 }
 
-module.exports = printifyApiCall;
+module.exports = apiCall;
