@@ -1,4 +1,6 @@
 async function updateEtsyListings(productType, row, allEtsyListings, shop_id, access_token, refresh_token) {
+
+    // If there is a problem, just throw the error and it will be handled in main.js
     
     console.log(`----Updating ${productType}`);
 
