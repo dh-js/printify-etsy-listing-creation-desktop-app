@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const chalk = require('chalk');
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
 const initialCsvProcessing = require('./functions/initial_csv_processing');
 const apiCall = require('./functions/api_call');
@@ -9,9 +11,45 @@ const uploadProductsPrintify = require('./functions/upload_products_printify');
 const updateEtsyListings = require('./functions/update_etsy_listings');
 const checkAllPublished = require('./functions/check_all_published');
 const getAllEtsyListings = require('./functions/get_all_etsy_listings');
+const publishListingsPrintify = require('./functions/publish_listings_printify');
+
+
+function getFormattedDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+    
+}
+
+async function createBackupCsv(rowsArray, fileName) {
+    const backupDirectory = './backups/';
+    const backupFilePath = backupDirectory + fileName;
+
+    let createBackupFile = createCsvWriter({
+        path: backupFilePath,
+        header: Object.keys(rowsArray[0]).map(key => {
+            return {id: key, title: key};
+        })
+    });
+
+    try {
+        await createBackupFile.writeRecords(rowsArray);
+        console.log("Backup CSV file has been created.");
+        console.log(`--> ${backupFilePath} has been created.`);
+    } catch (err) {
+        console.error("Error creating backup CSV file:", err);
+    }
+}
 
 router.post('/', async (req, res) => {
     const {access_token, refresh_token, shop_id, first_name, type_of_run} = req.body;
+    const backupFileName = "Backup_" + getFormattedDate() + ".csv";
 
     // Define the Printify API URL in case of dev-use
     let printifyApiUrl;
@@ -29,13 +67,13 @@ router.post('/', async (req, res) => {
         startingNumberOfEtsyActiveListings = activeEtsyListingsResult.count
     } catch (error) {
         console.log(error);
+        res.send(`Error getting active Etsy listings: ${error}`);
         return;
     }
 
-    console.log(`Starting number of active Etsy listings: ${startingNumberOfEtsyActiveListings}`);
+    console.log(`Number of currently active listings in Etsy store: ${startingNumberOfEtsyActiveListings}`);
     
     const initialCsvProcessingResult = await initialCsvProcessing();
-    //console.log(initialCsvProcessingResult);
 
     if (initialCsvProcessingResult.csvErrorArray.length > 0) {
         res.render("home", {
@@ -43,10 +81,14 @@ router.post('/', async (req, res) => {
             shop_id_hbs: shop_id,
             access_token_hbs: access_token,
             refresh_token_hbs: refresh_token,
-            errors: initialCsvProcessingResult.csvErrorArray
+            errors: initialCsvProcessingResult.csvErrorArray,
+            completedWithNoErrors: false
         });
         return;
     }
+
+    //res.send(`<pre>${JSON.stringify(initialCsvProcessingResult.newRowsArray, null, 2)}</pre>`);
+    //return;
 
     // This section is for during development - to get example product info from Printify
     // printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products.json/?page=1`
@@ -59,107 +101,163 @@ router.post('/', async (req, res) => {
     // return;
     //------End of dev section
 
+    // This section is to get shop ID during development
     // printifyApiUrl = `https://api.printify.com//v1/shops.json`
     // const shopData = await apiCall('printify', printifyApiUrl, 'GET');
     // console.log(shopData);
     // res.send(`<pre>${JSON.stringify(shopData, null, 2)}</pre>`);
     // return;
 
-    //const rowsArray = initialCsvProcessingResult.newRowsArray;
 
+    let errorsArray = [];
 
-    // DEPENDING ON WHETHER LISTINGS NEED TO BE CREATED ON PRINTIFY FIRST,
-    // OR WHETHER IT IS A RE-ATTEMPT OF ADDING THE FILES TO ETSY (in case there was timeout/server issues)
-    // ALSO MAY BE A RE-ATTEMPT OF ETSY IF PUBLISHING ON PRINTIFY HAD TO BE DONE MANUALLY FOR SOME LISTINGS
-    let uploadGraphicsPrintifyResult;
-    let uploadProductsPrintifyResult;
-    let printifyPublishingResult;
-    let rowsArrayAfterPrintify;
-
-    if (type_of_run === 'create') {
-        uploadGraphicsPrintifyResult = await uploadGraphicsPrintify(initialCsvProcessingResult.newRowsArray);
-
-        if (uploadGraphicsPrintifyResult.errorsArray.length > 0) {
-            res.render("home", {
-                first_name_hbs: first_name,
-                shop_id_hbs: shop_id,
-                access_token_hbs: access_token,
-                refresh_token_hbs: refresh_token,
-                errors: uploadGraphicsPrintifyResult.errorsArray
-            });
-            return;
-        }
-
-        uploadProductsPrintifyResult = await uploadProductsPrintify(uploadGraphicsPrintifyResult.rowsArray);
-
-        if (uploadProductsPrintifyResult.errorsArray.length > 0) {
-            res.render("home", {
-                first_name_hbs: first_name,
-                shop_id_hbs: shop_id,
-                access_token_hbs: access_token,
-                refresh_token_hbs: refresh_token,
-                errors: uploadProductsPrintifyResult.errorsArray
-            });
-            return;
-        }
-
-        rowsArrayAfterPrintify = uploadProductsPrintifyResult.rowsArray;
-
-        // PUBLISHING SECTION
-        // printifyPublishingResult = await publishListingsPrintify(uploadProductsPrintifyResult.rowsArray);
-        // if (printifyPublishingResult.errorsArray.length > 0) {
-        //     console.log("The following rows failed to publish:", printifyPublishingResult.errorsArray);
-        //     console.log("The listing automation process will continue without these rows");
-        // }
-        // rowsArrayAfterPrintify = printifyPublishingResult.rowsArray;
-        // Note: rowsArrayAfterPrintify now contains rows with only successfully published products in their ProductTypesWithYes.
-
-    } else if (type_of_run === 'resume') {
-        rowsArrayAfterPrintify = initialCsvProcessingResult.newRowsArray;
+    const uploadGraphicsPrintifyResult = await uploadGraphicsPrintify(initialCsvProcessingResult.newRowsArray);
+    if (uploadGraphicsPrintifyResult.errorsArray.length > 0) {
+        console.log(chalk.red("The following graphics failed to upload to Printify:", uploadGraphicsPrintifyResult.errorsArray));
+        errorsArray = errorsArray.concat(uploadGraphicsPrintifyResult.errorsArray);
     }
-    
-    //console.log(rowsArrayAfterPrintify);
 
-    /////////////////////////// NOW INTERACT WITH ETSY API ///////////////////////////
+    try {
+        await createBackupCsv(uploadGraphicsPrintifyResult.rowsArray, backupFileName);
+        console.log(chalk.green("Backup creation process completed. To Resume from this point or re-attempt any failed graphic uploads, move the backup .csv file into the '.csv' folder and re-run the process"));
+    } catch (err) {
+        console.log(chalk.red("Backup creation process failed:", err));
+    }
 
-    // CHECKING THAT ALL PUBLISHED LISTINGS ARE SHOWING ON ETSY
-    // let allPublishedListingsAreShowing = false;
-    // try {
-    //     allPublishedListingsAreShowing = await checkAllPublished(rowsArrayAfterPrintify, startingNumberOfEtsyActiveListings, shop_id, access_token, refresh_token);
-    // } catch (error) {
-    //     console.error(`Unable to check how many listings are now active on Etsy, once you can see all listings have published then run the 'Resume' process: ${error}`);
-    //     console.log(`allPublishedListingsAreShowing: ${allPublishedListingsAreShowing}`);
-    // }
-    // // If an error was thrown or if false was returned
-    // if (!allPublishedListingsAreShowing) {
-    //     console.log(`Not all published listings are showing on Etsy. Manually run the 'Resume' process once you are happy with what has been published.`);
-    //     console.log(`In the 'Resume' process the automation will skip any listings it can't see on Etsy`);
-    //     res.render("home", {
-    //         first_name_hbs: first_name,
-    //         shop_id_hbs: shop_id,
-    //         access_token_hbs: access_token,
-    //         refresh_token_hbs: refresh_token,
-    //         errors: [`Not all published listings are showing on Etsy. Manually run the 'Resume' process once you are happy with what has been published. The automation will skip any listings it can't see on Etsy`]
-    //     });
-    //     return;
-    // }
+    //res.send(`<pre>${JSON.stringify(uploadGraphicsPrintifyResult.rowsArray, null, 2)}</pre>`);
+    //return;
+
+    const uploadProductsPrintifyResult = await uploadProductsPrintify(uploadGraphicsPrintifyResult.rowsArray);
+
+    if (uploadProductsPrintifyResult.errorsArray.length > 0) {
+        console.log(chalk.red("The following listings failed to upload to Printify:", uploadProductsPrintifyResult.errorsArray));
+        errorsArray = errorsArray.concat(uploadProductsPrintifyResult.errorsArray);
+    }
+
+    try {
+        await createBackupCsv(uploadProductsPrintifyResult.rowsArray, backupFileName);
+        console.log(chalk.green("Backup creation process completed. To Resume from this point or re-attempt any failed listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+    } catch (err) {
+        console.log(chalk.red("Backup creation process failed:", err));
+    }
+
+    //res.send(`<pre>${JSON.stringify(uploadProductsPrintifyResult.rowsArray, null, 2)}</pre>`);
+    //return;
+
+    ////////// PUBLISHING SECTION /////////////////
+    const printifyPublishingResult = await publishListingsPrintify(uploadProductsPrintifyResult.rowsArray);
+    if (printifyPublishingResult.errorsArray.length > 0) {
+        console.log(chalk.red("The following products failed to publish:"));
+        printifyPublishingResult.errorsArray.forEach(error => {
+            console.log(chalk.red(error));
+        });
+        errorsArray = errorsArray.concat(printifyPublishingResult.errorsArray)
+    }
+
+    const rowsArrayAfterPrintify = printifyPublishingResult.rowsArray;
+    const numberOfPublishedProducts = printifyPublishingResult.howManyProductsPublished;
+
+    try {
+        await createBackupCsv(rowsArrayAfterPrintify, backupFileName);
+        console.log(chalk.green("Backup creation process completed. To Resume from this point or re-attempt any un-published listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+    } catch (err) {
+        console.log(chalk.red("Backup creation process failed:", err));
+    }
+
+    console.log(`Products published: ${numberOfPublishedProducts}`);
+
+    ////////// END OF PUBLISHING SECTION //////////////
+
+
+    // IF THERE ARE ANY PUBLISHED LISTINGS THEN CHECK THAT ALL PUBLISHED LISTINGS ARE SHOWING ON ETSY 
+    if (numberOfPublishedProducts > 0) {
+        let allPublishedListingsAreShowing = false;
+        try {
+            allPublishedListingsAreShowing = await checkAllPublished(startingNumberOfEtsyActiveListings, numberOfPublishedProducts, shop_id, access_token, refresh_token);
+        } catch (error) {
+            console.error(chalk.red(`Unable to check how many listings are now active on Etsy, the automation will continue and you can re-run the process on the post-Etsy backup .csv file if any listings aren't updated on Etsy: ${error}`));
+        }
+        // If an error was thrown or if false was returned
+        if (!allPublishedListingsAreShowing) {
+            console.log(chalk.red(`Not all published listings are showing on Etsy. The automation will continue and you can re-run the process on the post-Etsy backup .csv file if any listings aren't updated on Etsy`));
+        }
+    } else{
+        console.log(`No products were published so no need to check if they are showing on Etsy`);
+    }
     // END OF CHECKING WHETHER ALL PUBLISHED LISTINGS ARE SHOWING ON ETSY
+
+    //res.send(`<pre>${JSON.stringify(rowsArrayAfterPrintify, null, 2)}</pre>`);
+    //return;
 
 
     // GET ALL ACTIVE ETSY LISTINGS IN AN ARRAY SO THEY CAN BE MATCHED WITH THE CORRESPONDING ROW
+    console.log("GETTING ALL ACTIVE ETSY LISTINGS")
     const allEtsyListings = await getAllEtsyListings(shop_id, access_token, refresh_token);
 
+    //res.send(`<pre>${JSON.stringify(allEtsyListings, null, 2)}</pre>`);
+    //return;
 
     // For each row in rowsArrayAfterPrintify, for each ProductTypesWithYes, update the Etsy listing
+    console.log("STARTING TO UPDATE ETSY LISTINGS")
+    let etsyRowCounter = 1;
 
     for (const row of rowsArrayAfterPrintify) {
+        etsyRowCounter++
+        console.log(`--------Starting row: ${etsyRowCounter}`);
+        // Add property if it doesnt exist already, it will already exist if this is a resumption of a backup .csv
+        if (!row.ProductTypesDoneOnEtsy) {
+            row.ProductTypesDoneOnEtsy = [];
+        }
+    
         for (const product of row.ProductTypesWithYes) {
-            // This will only execute if there are items in ProductTypesWithYes
-            const updateEtsyListingsResult = await updateEtsyListings(product, row, allEtsyListings, shop_id, access_token, refresh_token);
-            
+            // This will only execute only if there are items in ProductTypesWithYes
+            // Check if the product is not already in the ProductTypesDoneOnEtsy array
+            if (!row.ProductTypesDoneOnEtsy.includes(product)) {
+                try {
+                    const updateEtsyListingsResult = await updateEtsyListings(product, row, allEtsyListings, shop_id, access_token, refresh_token);
+                    // No error caught so add the product to the ProductTypesDoneOnEtsy array
+                    row.ProductTypesDoneOnEtsy.push(product);
+                    console.log(chalk.green(`SUCCESS`));
+                } catch (error) {
+                    errorsArray = errorsArray.concat(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv, error: ${error}`);
+                    console.log(chalk.red(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv, error: ${error}`));
+                }
+            } else {
+                console.log(`Row ${etsyRowCounter}, product: ${product}, already done on Etsy, skipping...`);
+            }
         }
     }
 
+    try {
+        await createBackupCsv(rowsArrayAfterPrintify, backupFileName);
+        console.log(chalk.green("POST-ETSY BACKUP CREATION PROCESS COMPLETED. To re-attempt any listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+    } catch (err) {
+        console.log(chalk.red("Backup creation process failed:", err));
+    }
+
+    //res.send(`<pre>${JSON.stringify(rowsArrayAfterPrintify, null, 2)}</pre>`);
+
+    if (errorsArray.length > 0) {
+        res.render("home", {
+            first_name_hbs: first_name,
+            shop_id_hbs: shop_id,
+            access_token_hbs: access_token,
+            refresh_token_hbs: refresh_token,
+            errors: errorsArray,
+            completedWithNoErrors: false
+        });
+        return;
+    } else {
+        res.render("home", {
+            first_name_hbs: first_name,
+            shop_id_hbs: shop_id,
+            access_token_hbs: access_token,
+            refresh_token_hbs: refresh_token,
+            errors: errorsArray,
+            completedWithNoErrors: true
+        });
+        return;
+    }
     
 
 });

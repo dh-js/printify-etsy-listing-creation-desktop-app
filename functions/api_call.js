@@ -1,4 +1,5 @@
 const fetch = require("node-fetch");
+const chalk = require('chalk');
 
 async function apiCall(api, url, method = 'GET', body = null, retries = 3, delay = 5, etsy_access_token = null, etsy_refresh_token = null) {
     const delayExecution = (delay) => new Promise(resolve => setTimeout(resolve, delay * 1000));
@@ -37,7 +38,7 @@ async function apiCall(api, url, method = 'GET', body = null, retries = 3, delay
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error(`Failed to fetch from API: ${error}`);
+        console.error(chalk.yellow(`Failed to fetch from API: ${error}`));
         if (retries > 0) {
             console.log(`Retrying... (${retries} attempts left)...`);
             if (delay > 0) {

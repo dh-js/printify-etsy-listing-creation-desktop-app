@@ -1,3 +1,5 @@
+const chalk = require('chalk');
+
 const apiCall = require('./api_call');
 const gildan_18000_ids = require('../products/gildan_18000_ids');
 const bella_canvas_3001_ids = require('../products/bella_canvas_3001_ids');
@@ -41,63 +43,96 @@ async function uploadProductsPrintify(rowsArray) {
     let rowNumber = 1;
 
     for (const row of rowsArray) {
+
+        // Add property if it doesnt exist already, it will already exist if this is a resumption of a backup .csv
+        if (!row.ProductsUploadedToPrintify) {
+            row.ProductsUploadedToPrintify = [];
+        }
+
         rowNumber++;
         for (const productType of row.ProductTypesWithYes) {
 
-            const processTypeKey = `${productType} Process Type`;
-            let variantsArray = [];
-            let printAreaOneIds = [];
-            let printAreaTwoIds = [];
-            let idArrayToUse = productTypeToIdsMapping[productType]; // Dynamically access the array
-            
-            let primaryColors = row[`${productType} Primary Colors`].split(',');
-            let secondaryColors = [];
-            if (row[processTypeKey] === 'Primary Secondary') {
-                secondaryColors = row[`${productType} Secondary Colors`].split(',');
-            }
-            let allColors = primaryColors.concat(secondaryColors);
+            if (!row.ProductsUploadedToPrintify.includes(productType)) {
 
-            for (const item of idArrayToUse) {
-                // Extract color name from item.title
-                let colorName = extractColorName(item.title, productType);
-
-                // Check for exact match in allColors
-                let isColorMatch = allColors.includes(colorName);
-
-                let variant = {
-                    "id": item.id,
-                    "price": productTypeToPriceMapping[productType],
-                    "is_enabled": isColorMatch
-                };
+                const processTypeKey = `${productType} Process Type`;
+                let variantsArray = [];
+                let printAreaOneIds = [];
+                let printAreaTwoIds = [];
+                let idArrayToUse = productTypeToIdsMapping[productType]; // Dynamically access the array
                 
-                variantsArray.push(variant);
-
-                // Check for exact match in secondaryColors for the secondary array
-                let isSecondaryColorMatch = secondaryColors.includes(colorName);
-                if (row[processTypeKey] === 'Primary Secondary' && isSecondaryColorMatch) {
-                    printAreaTwoIds.push(item.id);
-                } else {
-                    printAreaOneIds.push(item.id);
+                let primaryColors = row[`${productType} Primary Colors`].split(',').map(color => color.trim());;
+                let secondaryColors = [];
+                if (row[processTypeKey] === 'Primary Secondary') {
+                    secondaryColors = row[`${productType} Secondary Colors`].split(',').map(color => color.trim());;
                 }
-            }
+                let allColors = primaryColors.concat(secondaryColors);
 
-            // Now create the product template
-            let newProductTemplate = {
-                "title": row[`${productType} Product Title`],
-                "description": "Test description 123...",
-                "blueprint_id": productTypeToBlueprintIdMapping[productType],
-                "print_provider_id": productTypeToPrintProviderIdMapping[productType],
-                "variants": variantsArray,
-                "print_areas": [
-                    {
-                        "variant_ids": printAreaOneIds,
+                for (const item of idArrayToUse) {
+                    // Extract color name from item.title
+                    let colorName = extractColorName(item.title, productType);
+
+                    // Check for exact match in allColors
+                    let isColorMatch = allColors.includes(colorName);
+
+                    let variant = {
+                        "id": item.id,
+                        "price": productTypeToPriceMapping[productType],
+                        "is_enabled": isColorMatch
+                    };
+                    
+                    variantsArray.push(variant);
+
+                    // Check for exact match in secondaryColors for the secondary array
+                    let isSecondaryColorMatch = secondaryColors.includes(colorName);
+                    if (row[processTypeKey] === 'Primary Secondary' && isSecondaryColorMatch) {
+                        printAreaTwoIds.push(item.id);
+                    } else {
+                        printAreaOneIds.push(item.id);
+                    }
+                }
+
+                // Now create the product template
+                let newProductTemplate = {
+                    "title": row[`${productType} Product Title`],
+                    "description": "Test description 123...",
+                    "blueprint_id": productTypeToBlueprintIdMapping[productType],
+                    "print_provider_id": productTypeToPrintProviderIdMapping[productType],
+                    "variants": variantsArray,
+                    "print_areas": [
+                        {
+                            "variant_ids": printAreaOneIds,
+                            "placeholders": [
+                                {
+                                    "position": "front",
+                                    "images": [
+                                        {
+                                            "id": row.primaryGraphicPrintifyId,
+                                            "name": row.primaryGraphicPrintifyName,
+                                            "type": "image/png",
+                                            "height": null,
+                                            "width": null,
+                                            "x": 0.5,
+                                            "y": 0.5,
+                                            "scale": 1,
+                                            "angle": 0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+
+                if (printAreaTwoIds.length > 0) {
+                    newProductTemplate.print_areas.push({
+                        "variant_ids": printAreaTwoIds,
                         "placeholders": [
                             {
                                 "position": "front",
                                 "images": [
                                     {
-                                        "id": row.primaryGraphicPrintifyId,
-                                        "name": row.primaryGraphicPrintifyName,
+                                        "id": row.secondaryGraphicPrintifyId,
+                                        "name": row.secondaryGraphicPrintifyName,
                                         "type": "image/png",
                                         "height": null,
                                         "width": null,
@@ -109,45 +144,24 @@ async function uploadProductsPrintify(rowsArray) {
                                 ]
                             }
                         ]
-                    }
-                ]
-            }
+                    });
+                } else {
+                    console.log('No secondary print area');
+                }
 
-            if (printAreaTwoIds.length > 0) {
-                newProductTemplate.print_areas.push({
-                    "variant_ids": printAreaTwoIds,
-                    "placeholders": [
-                        {
-                            "position": "front",
-                            "images": [
-                                {
-                                    "id": row.secondaryGraphicPrintifyId,
-                                    "name": row.secondaryGraphicPrintifyName,
-                                    "type": "image/png",
-                                    "height": null,
-                                    "width": null,
-                                    "x": 0.5,
-                                    "y": 0.5,
-                                    "scale": 1,
-                                    "angle": 0
-                                }
-                            ]
-                        }
-                    ]
-                });
+                const printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products.json`;
+                let newProduct;
+                try {
+                    newProduct = await apiCall('printify', printifyApiUrl, 'POST', newProductTemplate);
+                    console.log(chalk.green(`Created listing: ${productType} on Printify for row ${rowNumber}`));
+                    row.ProductsUploadedToPrintify.push(productType);
+                    row[`${productType} Printify Listing ID`] = newProduct.id;
+                } catch (error) {
+                    console.log(chalk.red(`Error creating listing: ${productType} on Printify for row ${rowNumber}`));
+                    errorsArray.push(error);
+                }
             } else {
-                console.log('No secondary print area');
-            }
-
-            const printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products.json`;
-            let newProduct;
-            try {
-                newProduct = await apiCall('printify', printifyApiUrl, 'POST', newProductTemplate);
-                console.log(`Created listing: ${productType} on Printify for row ${rowNumber}`);
-                row[`${productType} Prinitfy Listing ID`] = newProduct.id;
-            } catch (error) {
-                console.log(error);
-                errorsArray.push(error);
+                console.log(`Row ${rowNumber} already has ${productType} uploaded to Printify, moving on`);
             }
         }
     }

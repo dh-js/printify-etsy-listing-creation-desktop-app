@@ -105,6 +105,9 @@
                     <p class="failure-message">{{this}}</p>
                 {{/each}}
             {{/if}}
+            {{#if completedWithNoErrors}}
+                <p class="success-message"><b>Successfully created all listings with no errors!</b></p>
+            {{/if}}
         </form>
     </div>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">

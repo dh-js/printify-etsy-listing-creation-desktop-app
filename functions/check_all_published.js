@@ -1,20 +1,15 @@
+const chalk = require('chalk');
 const apiCall = require('./api_call');
 
-async function checkAllPublished(rowsArray, startingNumberOfEtsyActiveListings, shop_id, access_token, refresh_token) {
-    // FIRST CHECK THAT ALL PRODUCTS HAVE BEEN PUBLISHED
-    let totalProductTypesWithYes = 0;
-    for (const row of rowsArray) {
-        totalProductTypesWithYes += row.ProductTypesWithYes.length;
-    }
-    console.log(`Starting number of active Etsy listings: ${startingNumberOfEtsyActiveListings}`);
-    console.log(`Total number of products published by Printify: ${totalProductTypesWithYes}`);
+async function checkAllPublished(startingNumberOfEtsyActiveListings, numberOfPublishedProducts, shop_id, access_token, refresh_token) {
 
     // Now keep checking the number of active Etsy listings until it is equal to the number of products published by Printify
     let totalAttempts = 0;
     const etsyApiUrl = `https://openapi.etsy.com/v3/application/shops/${shop_id}/listings?state=active`
     let newActiveEtsyListingsCount = 0;
-    let targetNumberofActiveListings = startingNumberOfEtsyActiveListings + totalProductTypesWithYes;
+    let targetNumberofActiveListings = startingNumberOfEtsyActiveListings + numberOfPublishedProducts;
     console.log(`Target number of active Etsy listings: ${targetNumberofActiveListings}`);
+    console.log(`Automation will wait a maximum of 10 minutes for all products to appear before moving on`)
     do {
         try {
             const etsyListingsResult = await apiCall('etsy', etsyApiUrl, 'GET', null, 3, 5, access_token, refresh_token)
@@ -29,12 +24,12 @@ async function checkAllPublished(rowsArray, startingNumberOfEtsyActiveListings, 
             await new Promise(resolve => setTimeout(resolve, 20000)); // wait for 20 seconds before checking again
         }
         totalAttempts++;
-        if (totalAttempts > 90) {
+        if (totalAttempts > 30) {
             throw new Error('Exceeded the set time limit for checking whether all products have been published');
         }
     } while (newActiveEtsyListingsCount < targetNumberofActiveListings);
 
-    console.log('All Printify products are now active on Etsy.');
+    console.log(chalk.green('All Printify products are now active on Etsy.'));
     return true;
 }   
 

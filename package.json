@@ -9,6 +9,7 @@
   "dependencies": {
     "@ngrok/ngrok": "^1.1.1",
     "body-parser": "^1.20.2",
+    "chalk": "^4.1.2",
     "csv-parser": "^3.0.0",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.3.1",
