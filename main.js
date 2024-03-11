@@ -51,6 +51,10 @@ router.post('/', async (req, res) => {
     const {access_token, refresh_token, shop_id, first_name, type_of_run} = req.body;
     const backupFileName = "Backup_" + getFormattedDate() + ".csv";
 
+    if (type_of_run === 'dontPublish') {
+        console.log(chalk.yellow(`Running in 'Don't Publish' mode`));
+    }
+
     // Define the Printify API URL in case of dev-use
     let printifyApiUrl;
     let etsyApiUrl;
@@ -144,6 +148,20 @@ router.post('/', async (req, res) => {
     //res.send(`<pre>${JSON.stringify(uploadProductsPrintifyResult.rowsArray, null, 2)}</pre>`);
     //return;
 
+    // If the type of run is 'dontPublish' then exit early & render the home page with the errors
+    if (type_of_run === 'dontPublish') {
+        console.log("FINISHED");
+        res.render("home", {
+            first_name_hbs: first_name,
+            shop_id_hbs: shop_id,
+            access_token_hbs: access_token,
+            refresh_token_hbs: refresh_token,
+            errors: errorsArray,
+            completedWithNoErrors: errorsArray.length === 0
+        });
+        return;
+    }
+
     ////////// PUBLISHING SECTION /////////////////
     const printifyPublishingResult = await publishListingsPrintify(uploadProductsPrintifyResult.rowsArray);
     if (printifyPublishingResult.errorsArray.length > 0) {
@@ -218,7 +236,7 @@ router.post('/', async (req, res) => {
                     // No error caught so add the product to the ProductTypesDoneOnEtsy array
                     if (updateEtsyListingsResult.errorsArray.length === 0) {
                         row.ProductTypesDoneOnEtsy.push(product);
-                        console.log(chalk.green(`SUCCESS`));
+                        console.log(chalk.green(`ETSY LISTING UPDATE SUCCESS - NO ERRORS`));
                     } else {
                         // If there are errors, concatenate them into a single string message then throw them to the catch block
                         const errorMessage = updateEtsyListingsResult.errorsArray.join('; ');

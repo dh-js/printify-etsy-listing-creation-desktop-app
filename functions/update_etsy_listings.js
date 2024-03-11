@@ -21,24 +21,27 @@ async function updateEtsyListings(productType, row, allEtsyListings, shop_id, ac
         throw new Error(`Couldn't find published Etsy listing for ${productTitle}`);
     }
 
-    console.log(`Found Etsy listing ID: ${etsyListingId}`);
+    //console.log(`Found Etsy listing ID: ${etsyListingId}`);
 
-    // Now update the listing with the info from the row
-    let tags = row['Sweatshirt Tags'].split(',').map(tag => tag.trim());
-
-    etsyApiUrl = `https://openapi.etsy.com/v3/application/shops/${shop_id}/listings/${etsyListingId}`;
-
-    let tagObject = {
-        tags: tags
-    };
-
+    // Update the tags
     try {
+        let tags = row[`${productType} Tags`].split(',').map(tag => tag.trim());
+        let tagObject = {
+            tags: tags
+        };
+        etsyApiUrl = `https://openapi.etsy.com/v3/application/shops/${shop_id}/listings/${etsyListingId}`;
         const updateTagsResult = await apiCall('etsy', etsyApiUrl, 'PATCH', tagObject, 3, 5, access_token, refresh_token);
         // If apiCall does not throw an error, it means the update was successful.
-        console.log(chalk.green`Successfully updated tags for row ${etsyRowCounter}: ${productTitle}`);
+        console.log(chalk.green`Successfully updated tags for row ${etsyRowCounter}: ${productType}`);
     } catch (error) {
-        console.log(chalk.red(`Error updating tags for row ${etsyRowCounter}: ${productTitle}.`));
-        errorsArray.push(`Error updating tags for row ${etsyRowCounter}: ${productTitle}.`);
+        errorsArray.push(`Error updating tags for row ${etsyRowCounter}: ${productType}. Error details: ${error.message}`);
+    }
+
+    // Upload the photos
+    try {
+
+    } catch (error) {
+        errorsArray.push(`Error updating photos for row ${etsyRowCounter}: ${productType}. Error details: ${error.message}`);
     }
 
     return {

@@ -71,6 +71,10 @@ async function initialCsvProcessing() {
                 // Convert GraphicsUploadedToPrintify prop from string to array, if string empty, convert to empty array
                 row.ProductsPublishedToPrintify = row.ProductsPublishedToPrintify ? row.ProductsPublishedToPrintify.split(',') : [];
             }
+            if (row.ProductTypesDoneOnEtsy !== undefined) {
+                // Convert GraphicsUploadedToPrintify prop from string to array, if string empty, convert to empty array
+                row.ProductTypesDoneOnEtsy = row.ProductTypesDoneOnEtsy ? row.ProductTypesDoneOnEtsy.split(',') : [];
+            }
             
             initialReadRowsArray.push(row); // Push each row into the rowsArray
         }
