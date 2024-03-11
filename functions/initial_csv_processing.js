@@ -1,6 +1,7 @@
 const fs = require('fs'); 
 const fsPromises = require('fs').promises;
 const csv = require("csv-parser");
+const chalk = require('chalk');
 
 const { arrayOfProductTypesBeingUsed, productsNotInUse } = require('../products/products_being_used.js');
 
@@ -86,11 +87,13 @@ async function initialCsvProcessing() {
     // as it has already gone through the checking process
     graphicsUploadedToPrintifyExists = headers.includes('GraphicsUploadedToPrintify');
     if (graphicsUploadedToPrintifyExists) {
-        console.log("Resuming from a backup file, no need to re-check correct file paths");
+        console.log(chalk.yellow("RESUMING FROM A BACKUP FILE. No need to re-check for .csv errors"));
         return {
             newRowsArray: initialReadRowsArray,
             csvErrorArray
         };
+    } else {
+        console.log(chalk.yellow("NEW .CSV FILE. Running check for .csv errors"));
     }
     // END OF BACKUP CHECK
 

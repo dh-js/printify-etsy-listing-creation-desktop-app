@@ -119,7 +119,7 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(uploadGraphicsPrintifyResult.rowsArray, backupFileName);
-        console.log(chalk.green("Backup creation process completed. To Resume from this point or re-attempt any failed graphic uploads, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.green("UPLOADING GRAPHICS TO PRINTIFY BACKUP COMPLETED. To Resume from this point or re-attempt any failed graphic uploads, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }
@@ -136,7 +136,7 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(uploadProductsPrintifyResult.rowsArray, backupFileName);
-        console.log(chalk.green("Backup creation process completed. To Resume from this point or re-attempt any failed listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.green("CREATING LISTINGS ON PRINTIFY BACKUP COMPLETED. To Resume from this point or re-attempt any failed listings, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }
@@ -159,7 +159,7 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(rowsArrayAfterPrintify, backupFileName);
-        console.log(chalk.green("Backup creation process completed. To Resume from this point or re-attempt any un-published listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.green("PUBLISHING LISTINGS TO ETSY BACKUP COMPLETED. To Resume from this point or re-attempt any un-published listings, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }
@@ -214,13 +214,19 @@ router.post('/', async (req, res) => {
             // Check if the product is not already in the ProductTypesDoneOnEtsy array
             if (!row.ProductTypesDoneOnEtsy.includes(product)) {
                 try {
-                    const updateEtsyListingsResult = await updateEtsyListings(product, row, allEtsyListings, shop_id, access_token, refresh_token);
+                    const updateEtsyListingsResult = await updateEtsyListings(product, row, allEtsyListings, shop_id, access_token, refresh_token, etsyRowCounter);
                     // No error caught so add the product to the ProductTypesDoneOnEtsy array
-                    row.ProductTypesDoneOnEtsy.push(product);
-                    console.log(chalk.green(`SUCCESS`));
+                    if (updateEtsyListingsResult.errorsArray.length === 0) {
+                        row.ProductTypesDoneOnEtsy.push(product);
+                        console.log(chalk.green(`SUCCESS`));
+                    } else {
+                        // If there are errors, concatenate them into a single string message then throw them to the catch block
+                        const errorMessage = updateEtsyListingsResult.errorsArray.join('; ');
+                        throw new Error(errorMessage);
+                    }
                 } catch (error) {
-                    errorsArray = errorsArray.concat(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv, error: ${error}`);
-                    console.log(chalk.red(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv, error: ${error}`));
+                    errorsArray = errorsArray.concat(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv.  Details: ${error.message}`);
+                    console.log(chalk.red(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv.  Details: ${error.message}`));
                 }
             } else {
                 console.log(`Row ${etsyRowCounter}, product: ${product}, already done on Etsy, skipping...`);
@@ -230,7 +236,7 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(rowsArrayAfterPrintify, backupFileName);
-        console.log(chalk.green("POST-ETSY BACKUP CREATION PROCESS COMPLETED. To re-attempt any listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.green("POST-ETSY (FINAL) BACKUP COMPLETED. To re-attempt any listings, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }

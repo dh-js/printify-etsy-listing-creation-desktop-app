@@ -86,21 +86,19 @@
     <div class="container">
         <h3>Welcome, {{first_name_hbs}}!</h3>
         <hr>
-        <ol>
-            <li><b>Create listings</b> (using the file in the .csv folder)</li>
-        </ol>
+        <p>Add a new .csv file or a backup .csv file to the <b>'.csv' folder</b> and run the process</p>
         <form action="/main" method="post" id="listing_creation_form">
             <input type="hidden" name="access_token" value="{{access_token_hbs}}" />
             <input type="hidden" name="refresh_token" value="{{refresh_token_hbs}}" />
             <input type="hidden" name="shop_id" value="{{shop_id_hbs}}" />
             <input type="hidden" name="first_name" value="{{first_name_hbs}}" />
             <input type="hidden" name="type_of_run" id="typeOfRun" value="create" />
-            <button type="button" class="btn btn-primary btn-lg mb-2" id="createButton">Create New Listings</button>
+            <button type="button" class="btn btn-primary btn-lg mb-2" id="createButton">Run Listing Automation</button>
             <hr>
-            <button type="button" class="btn btn-secondary btn-lg mb-2" id="resumeButton">Etsy Listing Updating Only</button>
-            <hr>
+            <!-- <button type="button" class="btn btn-secondary btn-lg mb-2" id="resumeButton">Etsy Listing Updating Only</button>
+            <hr> -->
             {{#if errors}}
-                <p class="failure-message"><b>The following errors were found in the .csv file, please fix and try again:</b></p>
+                <p class="failure-message"><b>There were the following errors:</b></p>
                 {{#each errors}}
                     <p class="failure-message">{{this}}</p>
                 {{/each}}

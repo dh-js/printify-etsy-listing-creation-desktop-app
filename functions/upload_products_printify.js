@@ -158,7 +158,7 @@ async function uploadProductsPrintify(rowsArray) {
                     row[`${productType} Printify Listing ID`] = newProduct.id;
                 } catch (error) {
                     console.log(chalk.red(`Error creating listing: ${productType} on Printify for row ${rowNumber}`));
-                    errorsArray.push(error);
+                    errorsArray.push(`Error creating listing: ${productType} on Printify for row ${rowNumber}`);
                 }
             } else {
                 console.log(`Row ${rowNumber} already has ${productType} uploaded to Printify, moving on`);

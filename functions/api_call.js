@@ -5,27 +5,23 @@ async function apiCall(api, url, method = 'GET', body = null, retries = 3, delay
     const delayExecution = (delay) => new Promise(resolve => setTimeout(resolve, delay * 1000));
 
     try {
-        let options;
+        let options = { method: method };
+
         if (api === 'printify') {
-            options = {
-                method: method,
-                headers: {
-                    'Authorization': `Bearer ${process.env.PRINTIFY_API_KEY}`,
-                    'Content-Type': 'application/json'
-                }
+            options.headers = {
+                'Authorization': `Bearer ${process.env.PRINTIFY_API_KEY}`,
+                'Content-Type': 'application/json'
             };
         } else if (api === 'etsy') {
-            options = {
-                method: method,
-                headers: {
-                    'x-api-key': process.env.ETSY_CLIENT_ID,
-                    Authorization: `Bearer ${etsy_access_token}`,
-                    'Accept': 'application/json',
-                },
+            options.headers = {
+                'x-api-key': process.env.ETSY_CLIENT_ID,
+                Authorization: `Bearer ${etsy_access_token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             };
         }
-        // Add the body to the request if method is POST and body is not null
-        if (method === 'POST' && body) {
+        // Add the body to the request if method is POST or PATCH and body is not null
+        if ((method === 'POST' || method === 'PATCH') && body) {
             options.body = JSON.stringify(body);
         }
 
