@@ -46,8 +46,31 @@ async function createBackupCsv(rowsArray, fileName) {
     }
 }
 
+async function refreshTokens(refresh_token) {
+    
+    const response = await fetch('https://api.etsy.com/v3/public/oauth/token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `grant_type=refresh_token&client_id=${process.env.ETSY_CLIENT_ID}&refresh_token=${refresh_token}`
+    });
+
+    if (!response.ok) {
+        throw new Error(`Error getting refresh token: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token
+    };
+}
+
 router.post('/', async (req, res) => {
-    const {access_token, refresh_token, shop_id, first_name, type_of_run} = req.body;
+    const {shop_id, first_name, type_of_run} = req.body;
+    let {access_token, refresh_token} = req.body;
     const backupFileName = "Backup_" + getFormattedDate() + ".csv";
 
     if (type_of_run === 'dontPublish') {
@@ -262,6 +285,19 @@ router.post('/', async (req, res) => {
                 }
             } else {
                 console.log(`Row ${etsyRowCounter}, product: ${product}, already done on Etsy, skipping...`);
+            }
+        }
+
+        //Refresh the access token every 20 rows
+        if (etsyRowCounter % 20 === 0) {
+            try {
+                const newTokens = await refreshTokens(refresh_token);
+                refresh_token = newTokens.refresh_token;
+                access_token = newTokens.access_token;
+                console.log(chalk.yellow(`API Tokens refreshed`));
+            } catch (error) {
+                console.error('Error refreshing tokens. Automation will try continuing anyway:', error);
+                errorsArray.push('Error refreshing tokens');
             }
         }
     }
