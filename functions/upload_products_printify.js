@@ -1,4 +1,5 @@
 const chalk = require('chalk');
+const fsPromises = require('fs').promises;
 
 const apiCall = require('./api_call');
 const gildan_18000_ids = require('../products/gildan_18000_ids');
@@ -7,11 +8,6 @@ const bella_canvas_3001_ids = require('../products/bella_canvas_3001_ids');
 const productTypeToIdsMapping = {
     "Gildan 18000": gildan_18000_ids,
     "Bella Canvas 3001": bella_canvas_3001_ids
-};
-
-const productTypeToPriceMapping = {
-    "Gildan 18000": 2799,
-    "Bella Canvas 3001": 1899
 };
 
 const productTypeToBlueprintIdMapping = {
@@ -25,16 +21,19 @@ const productTypeToPrintProviderIdMapping = {
 };
 
 // Helper function to extract color name from title
-function extractColorName(title, productType) {
+function extractColorNameAndSize(title, productType) {
     let colorName;
+    let size;
     if (productType === "Gildan 18000") {
         // Format: "Size / Color"
         colorName = title.split(' / ')[1];
+        size = title.split(' / ')[0].trim();
     } else if (productType === "Bella Canvas 3001") {
         // Format: "Color / Size"
         colorName = title.split(' / ')[0];
+        size = title.split(' / ')[1].trim();
     }
-    return colorName;
+    return { colorName, size };
 }
 
 async function uploadProductsPrintify(rowsArray) {
@@ -67,16 +66,18 @@ async function uploadProductsPrintify(rowsArray) {
                 }
                 let allColors = primaryColors.concat(secondaryColors);
 
+                let jsonFilename = `${productType.replace(/ /g, '_')}.json`;
+                let priceCustomData = JSON.parse(await fsPromises.readFile(`./price_settings/${jsonFilename}`, 'utf8'));
                 for (const item of idArrayToUse) {
                     // Extract color name from item.title
-                    let colorName = extractColorName(item.title, productType);
-
+                    let { colorName, size } = extractColorNameAndSize(item.title, productType);
+                    
                     // Check for exact match in allColors
                     let isColorMatch = allColors.includes(colorName);
 
                     let variant = {
                         "id": item.id,
-                        "price": productTypeToPriceMapping[productType],
+                        "price": priceCustomData[size],
                         "is_enabled": isColorMatch
                     };
                     
@@ -94,7 +95,6 @@ async function uploadProductsPrintify(rowsArray) {
                 // Now create the product template
                 let newProductTemplate = {
                     "title": row[`${productType} Product Title`],
-                    "description": "Test description 123...",
                     "blueprint_id": productTypeToBlueprintIdMapping[productType],
                     "print_provider_id": productTypeToPrintProviderIdMapping[productType],
                     "variants": variantsArray,

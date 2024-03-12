@@ -1,7 +1,8 @@
 const fetch = require("node-fetch");
 const chalk = require('chalk');
+const FormData = require('form-data');
 
-async function apiCall(api, url, method = 'GET', body = null, retries = 3, delay = 5, etsy_access_token = null, etsy_refresh_token = null) {
+async function apiCall(api, url, method = 'GET', body = null, retries = 3, delay = 5, etsy_access_token = null, etsy_refresh_token = null, custom_headers = null) {
     const delayExecution = (delay) => new Promise(resolve => setTimeout(resolve, delay * 1000));
 
     try {
@@ -12,17 +13,25 @@ async function apiCall(api, url, method = 'GET', body = null, retries = 3, delay
                 'Authorization': `Bearer ${process.env.PRINTIFY_API_KEY}`,
                 'Content-Type': 'application/json'
             };
-        } else if (api === 'etsy') {
+        } else if (api === 'etsy' && !custom_headers) {
             options.headers = {
                 'x-api-key': process.env.ETSY_CLIENT_ID,
                 Authorization: `Bearer ${etsy_access_token}`,
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             };
+        } else if (api === 'etsy' && custom_headers) {
+            options.headers = custom_headers;
         }
         // Add the body to the request if method is POST or PATCH and body is not null
-        if ((method === 'POST' || method === 'PATCH') && body) {
-            options.body = JSON.stringify(body);
+        if ((method === 'POST' || method === 'PATCH' || method === 'PUT') && body) {
+            if (body instanceof FormData) {
+                // If the body is FormData, assign it directly without stringification
+                options.body = body;
+            } else {
+                // For other types of bodies, stringify
+                options.body = JSON.stringify(body);
+            }
         }
 
         const response = await fetch(url, options);

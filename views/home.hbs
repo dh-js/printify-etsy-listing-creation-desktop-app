@@ -93,9 +93,12 @@
             <input type="hidden" name="shop_id" value="{{shop_id_hbs}}" />
             <input type="hidden" name="first_name" value="{{first_name_hbs}}" />
             <input type="hidden" name="type_of_run" id="typeOfRun" value="create" />
-            <button type="button" class="btn btn-primary btn-lg mb-2" id="createButton">Run Listing Automation</button>
             <hr>
-            <button type="button" class="btn btn-secondary btn-lg mb-2" id="dontPublishButton">Run Listing Automation (stops after creating listings on Printify)</button>
+            <button type="button" class="btn btn-primary btn-lg mb-2" id="createButton">Run Full Listing Automation</button>
+            <p>Start from a new .csv file or resume from a backup. Listings will be published to Etsy.</p>
+            <hr>
+            <button type="button" class="btn btn-secondary btn-lg mb-2" id="dontPublishButton">Create listings on Printify only</button>
+            <p>Start from a new .csv file or resume from a backup. Listings won't be published to Etsy.</p>
             <hr>
             {{#if errors}}
                 <p class="failure-message"><b>There were the following errors:</b></p>

@@ -40,8 +40,7 @@ async function createBackupCsv(rowsArray, fileName) {
 
     try {
         await createBackupFile.writeRecords(rowsArray);
-        console.log("Backup CSV file has been created.");
-        console.log(`--> ${backupFilePath} has been created.`);
+        console.log(chalk.green(`--> ${backupFilePath} has been created.`));
     } catch (err) {
         console.error("Error creating backup CSV file:", err);
     }
@@ -123,7 +122,7 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(uploadGraphicsPrintifyResult.rowsArray, backupFileName);
-        console.log(chalk.green("UPLOADING GRAPHICS TO PRINTIFY BACKUP COMPLETED. To Resume from this point or re-attempt any failed graphic uploads, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.yellow("'UPLOADING GRAPHICS TO PRINTIFY' BACKUP COMPLETED. To Resume from this point or re-attempt any failed graphic uploads, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }
@@ -140,7 +139,7 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(uploadProductsPrintifyResult.rowsArray, backupFileName);
-        console.log(chalk.green("CREATING LISTINGS ON PRINTIFY BACKUP COMPLETED. To Resume from this point or re-attempt any failed listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.yellow("'CREATING LISTINGS ON PRINTIFY' BACKUP COMPLETED. To Resume from this point or re-attempt any failed listings, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }
@@ -177,12 +176,12 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(rowsArrayAfterPrintify, backupFileName);
-        console.log(chalk.green("PUBLISHING LISTINGS TO ETSY BACKUP COMPLETED. To Resume from this point or re-attempt any un-published listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.yellow("'PUBLISHING LISTINGS TO ETSY' BACKUP COMPLETED. To Resume from this point or re-attempt any un-published listings, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }
 
-    console.log(`Products published: ${numberOfPublishedProducts}`);
+    console.log(chalk.yellow(`Products published: ${numberOfPublishedProducts}`));
 
     ////////// END OF PUBLISHING SECTION //////////////
 
@@ -215,6 +214,21 @@ router.post('/', async (req, res) => {
     //res.send(`<pre>${JSON.stringify(allEtsyListings, null, 2)}</pre>`);
     //return;
 
+    //GET SHOP SECTIONS & SECTION IDS
+    let shopSectionTranslations = {};
+    etsyApiUrl = `https://openapi.etsy.com/v3/application/shops/${shop_id}/sections`;
+    try {
+        const getEtsyShopSectionsResult = await apiCall('etsy', etsyApiUrl, 'GET', null, 3, 5, access_token, refresh_token);
+        //Creating the shopSectionTranslations object which has the shop section titles & the corresponding IDs
+        getEtsyShopSectionsResult.results.forEach(result => {
+            shopSectionTranslations[result.title] = result.shop_section_id;
+        });
+        console.log(`Successfully got shop sections from Etsy API`);
+    } catch (error) {
+        console.error(chalk.red(`Error getting Etsy shop sections: ${error}`));
+        errorsArray = errorsArray.concat(`Error getting Etsy shop sections: ${error}`);
+    }
+
     // For each row in rowsArrayAfterPrintify, for each ProductTypesWithYes, update the Etsy listing
     console.log("STARTING TO UPDATE ETSY LISTINGS")
     let etsyRowCounter = 1;
@@ -232,11 +246,11 @@ router.post('/', async (req, res) => {
             // Check if the product is not already in the ProductTypesDoneOnEtsy array
             if (!row.ProductTypesDoneOnEtsy.includes(product)) {
                 try {
-                    const updateEtsyListingsResult = await updateEtsyListings(product, row, allEtsyListings, shop_id, access_token, refresh_token, etsyRowCounter);
+                    const updateEtsyListingsResult = await updateEtsyListings(product, row, allEtsyListings, shop_id, access_token, refresh_token, etsyRowCounter, shopSectionTranslations);
                     // No error caught so add the product to the ProductTypesDoneOnEtsy array
                     if (updateEtsyListingsResult.errorsArray.length === 0) {
                         row.ProductTypesDoneOnEtsy.push(product);
-                        console.log(chalk.green(`ETSY LISTING UPDATE SUCCESS - NO ERRORS`));
+                        console.log(chalk.green(`ETSY LISTING UPDATE SUCCESS FOR ROW ${etsyRowCounter}, PRODUCT ${product} - NO ERRORS`));
                     } else {
                         // If there are errors, concatenate them into a single string message then throw them to the catch block
                         const errorMessage = updateEtsyListingsResult.errorsArray.join('; ');
@@ -244,7 +258,7 @@ router.post('/', async (req, res) => {
                     }
                 } catch (error) {
                     errorsArray = errorsArray.concat(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv.  Details: ${error.message}`);
-                    console.log(chalk.red(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product} you can re-attempt this from the backup .csv.  Details: ${error.message}`));
+                    console.log(chalk.red(`Error when updating Etsy info for row ${etsyRowCounter}, product: ${product}. You can re-attempt this from the backup .csv.  Details: ${error.message}`));
                 }
             } else {
                 console.log(`Row ${etsyRowCounter}, product: ${product}, already done on Etsy, skipping...`);
@@ -254,12 +268,14 @@ router.post('/', async (req, res) => {
 
     try {
         await createBackupCsv(rowsArrayAfterPrintify, backupFileName);
-        console.log(chalk.green("POST-ETSY (FINAL) BACKUP COMPLETED. To re-attempt any listings, move the backup .csv file into the '.csv' folder and re-run the process"));
+        console.log(chalk.yellow("'POST-ETSY' (FINAL) BACKUP COMPLETED. To re-attempt any listings, move the backup .csv file into the '.csv' folder and re-run the process"));
     } catch (err) {
         console.log(chalk.red("Backup creation process failed:", err));
     }
 
     //res.send(`<pre>${JSON.stringify(rowsArrayAfterPrintify, null, 2)}</pre>`);
+
+    console.log("FINISHED");
 
     if (errorsArray.length > 0) {
         res.render("home", {
