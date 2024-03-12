@@ -92,6 +92,24 @@ async function uploadProductsPrintify(rowsArray) {
                     }
                 }
 
+                let imageHeight;
+                let imageWidth;
+                let imageX;
+                let imageY;
+                let imageScale;
+                if (productType === 'Gildan 18000') {
+                    imageHeight = 5400;
+                    imageWidth = 4500;
+                    imageX = 0.5;
+                    imageY = 0.5;
+                    imageScale = 0.9523809523809522;
+                } else if (productType === 'Bella Canvas 3001') {
+                    imageHeight = 5400;
+                    imageWidth = 4500;
+                    imageX = 0.5;
+                    imageY = 0.4615157480314961;
+                    imageScale = 1;
+                }
                 // Now create the product template
                 let newProductTemplate = {
                     "title": row[`${productType} Product Title`],
@@ -109,11 +127,11 @@ async function uploadProductsPrintify(rowsArray) {
                                             "id": row.primaryGraphicPrintifyId,
                                             "name": row.primaryGraphicPrintifyName,
                                             "type": "image/png",
-                                            "height": null,
-                                            "width": null,
-                                            "x": 0.5,
-                                            "y": 0.5,
-                                            "scale": 1,
+                                            "height": imageHeight,
+                                            "width": imageWidth,
+                                            "x": imageX,
+                                            "y": imageY,
+                                            "scale": imageScale,
                                             "angle": 0
                                         }
                                     ]
@@ -134,11 +152,11 @@ async function uploadProductsPrintify(rowsArray) {
                                         "id": row.secondaryGraphicPrintifyId,
                                         "name": row.secondaryGraphicPrintifyName,
                                         "type": "image/png",
-                                        "height": null,
-                                        "width": null,
-                                        "x": 0.5,
-                                        "y": 0.5,
-                                        "scale": 1,
+                                        "height": imageHeight,
+                                        "width": imageWidth,
+                                        "x": imageX,
+                                        "y": imageY,
+                                        "scale": imageScale,
                                         "angle": 0
                                     }
                                 ]

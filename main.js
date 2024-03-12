@@ -123,7 +123,7 @@ router.post('/', async (req, res) => {
     //     id: variant.id,
     //     title: variant.title
     // }));
-    // res.send(`<pre>${JSON.stringify(allProductsData.data[0], null, 2)}</pre>`);
+    // res.send(`<pre>${JSON.stringify(allProductsData, null, 2)}</pre>`);
     // return;
     //------End of dev section
 
