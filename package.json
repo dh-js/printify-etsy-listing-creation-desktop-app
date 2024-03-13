@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
+  "bin": "server.js",
   "scripts": {
     "start": "node server.js"
   },
@@ -21,10 +22,12 @@
   },
   "pkg": {
     "scripts": [
-      "*.js"
+      "*.js",
+      "functions/*.js",
+      "products/*.js"
     ],
     "assets": [
-      "views/**/*"
+      "views/*"
     ],
     "targets": [
       "node18-win-x64"

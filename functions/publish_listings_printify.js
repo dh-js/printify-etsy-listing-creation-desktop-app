@@ -17,7 +17,7 @@ async function publishListingsPrintify(rowsArray) {
 
             if (!row.ProductsPublishedToPrintify.includes(product)) {
 
-                console.log(`Publishing row ${rowCounter}, ${product} to Etsy`);
+                //console.log(`Publishing row ${rowCounter}, ${product} to Etsy`);
 
                 const printifyListingId = row[`${product} Printify Listing ID`];
                 const printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products/${printifyListingId}/publish.json`;

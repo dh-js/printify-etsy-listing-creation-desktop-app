@@ -40,6 +40,7 @@ async function createBackupCsv(rowsArray, fileName) {
 
     try {
         await createBackupFile.writeRecords(rowsArray);
+        console.log("Checkpoint reached!");
         console.log(chalk.green(`--> ${backupFilePath} has been created.`));
     } catch (err) {
         console.error("Error creating backup CSV file:", err);
@@ -127,12 +128,29 @@ router.post('/', async (req, res) => {
     // return;
     //------End of dev section
 
+    // This section is to unpublish a product
+    //printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products/*PRODUCT ID*/unpublish.json`
+    //This section is to mark as publishing failed (if it is stuck in publishing status)
+    // let publishFailBody = {
+    //     "reason": "Request timed out"
+    // }
+    // printifyApiUrl = `https://api.printify.com/v1/shops/${process.env.PRINTIFY_SHOP_ID}/products/*PRODUCT ID*/publishing_failed.json`
+    // const unpublishData = await apiCall('printify', printifyApiUrl, 'POST', publishFailBody);
+    // console.log(unpublishData);
+
+    // This section is to delete/disconnect a shop
+    // printifyApiUrl = `https://api.printify.com//v1/shops/*SHOP ID*/connection.json`
+    // const deleteData = await apiCall('printify', printifyApiUrl, 'DELETE');
+    // console.log(deleteData);
+    
     // This section is to get shop ID during development
     // printifyApiUrl = `https://api.printify.com//v1/shops.json`
     // const shopData = await apiCall('printify', printifyApiUrl, 'GET');
     // console.log(shopData);
     // res.send(`<pre>${JSON.stringify(shopData, null, 2)}</pre>`);
     // return;
+
+
 
 
     let errorsArray = [];
