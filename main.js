@@ -150,7 +150,11 @@ router.post('/', async (req, res) => {
     // res.send(`<pre>${JSON.stringify(shopData, null, 2)}</pre>`);
     // return;
 
-
+    // This section is to get a production partner ID
+    // etsyApiUrl = `https://openapi.etsy.com/v3/application/shops/${shop_id}/production-partners`;
+    // const getEtsyProductionPartners = await apiCall('etsy', etsyApiUrl, 'GET', null, 3, 5, access_token, refresh_token);
+    // res.send(`<pre>${JSON.stringify(getEtsyProductionPartners, null, 2)}</pre>`);
+    // return;    
 
 
     let errorsArray = [];

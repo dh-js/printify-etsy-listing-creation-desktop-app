@@ -75,9 +75,12 @@ async function uploadProductsPrintify(rowsArray) {
                     // Check for exact match in allColors
                     let isColorMatch = allColors.includes(colorName);
 
+                    // Replace decimal points with nothing, then convert to integer
+                    let priceWithoutDecimal = parseInt(priceCustomData[size].toFixed(2).replace('.', ''), 10);
+
                     let variant = {
                         "id": item.id,
-                        "price": priceCustomData[size],
+                        "price": priceWithoutDecimal,
                         "is_enabled": isColorMatch
                     };
                     

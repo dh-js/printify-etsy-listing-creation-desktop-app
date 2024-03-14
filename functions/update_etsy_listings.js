@@ -47,6 +47,19 @@ async function updateEtsyListings(productType, row, allEtsyListings, shop_id, ac
 
     //console.log(`Found Etsy listing ID: ${etsyListingId}`);
 
+    // Update the Production Partner
+    try {
+        etsyApiUrl = `https://openapi.etsy.com/v3/application/shops/${shop_id}/listings/${etsyListingId}`;
+        let bodyObject = {
+            production_partner_ids: [process.env.PRODUCTION_PARTNER_ID]
+        };
+        const updateProductionPartnerResult = await apiCall('etsy', etsyApiUrl, 'PATCH', bodyObject, 3, 5, access_token, refresh_token);
+        // If apiCall does not throw an error, it means the update was successful.
+        console.log(`Successfully updated production partner`);
+    } catch (error) {
+        errorsArray.push(`Error updating production partner for row ${etsyRowCounter}: ${productType}. Error details: ${error.message}`);
+    }
+
     // Update the tags
     try {
         let tags = row[`${productType} Tags`].split(',').map(tag => tag.trim());

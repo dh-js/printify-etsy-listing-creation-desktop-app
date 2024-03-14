@@ -9,7 +9,7 @@ async function checkAllPublished(startingNumberOfEtsyActiveListings, numberOfPub
     let newActiveEtsyListingsCount = 0;
     let targetNumberofActiveListings = startingNumberOfEtsyActiveListings + numberOfPublishedProducts;
     console.log(`Target number of active Etsy listings: ${targetNumberofActiveListings}`);
-    console.log(`Automation will wait a maximum of 15 minutes for all products to appear before moving on`)
+    console.log(`Automation will wait indefinitely for all products to appear before moving on`)
     do {
         try {
             const etsyListingsResult = await apiCall('etsy', etsyApiUrl, 'GET', null, 3, 5, access_token, refresh_token)
@@ -20,13 +20,13 @@ async function checkAllPublished(startingNumberOfEtsyActiveListings, numberOfPub
         }
 
         if (newActiveEtsyListingsCount < targetNumberofActiveListings) {
-            console.log('Waiting 30 seconds...');
-            await new Promise(resolve => setTimeout(resolve, 30000)); // wait for 30 seconds before checking again
+            console.log('Waiting 60 seconds...');
+            await new Promise(resolve => setTimeout(resolve, 60000)); // wait for 60 seconds before checking again
         }
-        totalAttempts++;
-        if (totalAttempts > 30) {
-            throw new Error('Exceeded the set time limit for checking whether all products have been published');
-        }
+        //totalAttempts++;
+        // if (totalAttempts > 30) {
+        //     throw new Error('Exceeded the set time limit for checking whether all products have been published');
+        // }
     } while (newActiveEtsyListingsCount < targetNumberofActiveListings);
 
     console.log(chalk.green('All Printify products are now active on Etsy.'));
