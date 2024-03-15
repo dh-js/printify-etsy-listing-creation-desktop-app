@@ -28,4 +28,4 @@ For the client, the app is packaged into a single portable executable file using
 
 ## Note
 
-No confidential information has been added to Github, all private information is stored in a .env file.
+No confidential information has been added to Github, all private/identifiable information is stored in a .env file.
