@@ -66,8 +66,10 @@ async function uploadProductsPrintify(rowsArray) {
                 }
                 let allColors = primaryColors.concat(secondaryColors);
 
-                let jsonFilename = `${productType.replace(/ /g, '_')}.json`;
-                let priceCustomData = JSON.parse(await fsPromises.readFile(`./price_settings/${jsonFilename}`, 'utf8'));
+                let jsonFilenamePrice = `${productType.replace(/ /g, '_')}.json`;
+                let priceCustomData = JSON.parse(await fsPromises.readFile(`./settings_price/${jsonFilenamePrice}`, 'utf8'));
+                let jsonFilenameDescription = `${productType.replace(/ /g, '_')}.json`;
+                let descriptionCustomData = JSON.parse(await fsPromises.readFile(`./settings_description/${jsonFilenameDescription}`, 'utf8'));
                 for (const item of idArrayToUse) {
                     // Extract color name from item.title
                     let { colorName, size } = extractColorNameAndSize(item.title, productType);
@@ -75,8 +77,12 @@ async function uploadProductsPrintify(rowsArray) {
                     // Check for exact match in allColors
                     let isColorMatch = allColors.includes(colorName);
 
+                    // Determine if this variant matches the Loss Leader criteria
+                    let isLossLeader = colorName === priceCustomData["Loss Leader Color"] && size === priceCustomData["Loss Leader Size"];
+                    let price = isLossLeader ? priceCustomData["Loss Leader Price"] : priceCustomData[size];
+
                     // Replace decimal points with nothing, then convert to integer
-                    let priceWithoutDecimal = parseInt(priceCustomData[size].toFixed(2).replace('.', ''), 10);
+                    let priceWithoutDecimal = parseInt(price.toFixed(2).replace('.', ''), 10);
 
                     let variant = {
                         "id": item.id,
@@ -116,6 +122,7 @@ async function uploadProductsPrintify(rowsArray) {
                 // Now create the product template
                 let newProductTemplate = {
                     "title": row[`${productType} Product Title`],
+                    "description": descriptionCustomData["Description"],
                     "blueprint_id": productTypeToBlueprintIdMapping[productType],
                     "print_provider_id": productTypeToPrintProviderIdMapping[productType],
                     "variants": variantsArray,
